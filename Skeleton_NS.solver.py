@@ -20,7 +20,7 @@ mone = int(-1)
 
 L = float(1.0)
 Re = float(1000)    # Reynolds number
-N = int(3)  		# mesh cells in x- and y-direction
+N = int(2)  		# mesh cells in x- and y-direction
 
 u = np.zeros([2*N*(N+1),1], dtype = np.float)
 p = np.zeros([N*N+4*N,1], dtype = np.float)
@@ -71,7 +71,7 @@ V_wall_right = 0
 # Set up the sparse incidence matrix tE21. Use the orientations described
 # in the assignment.
 # Make sure to sue sparse matrices to avoid memory problems
-tE21 = sparse.csr_matrix((N*N,2*N*(N+1)))
+tE21 = sparse.lil_matrix((N*N,2*N*(N+1)))
 for y in range(N):
     for x in range(N):
         tE21[x+y*N,N*(N+1)+x+y*N]=1
@@ -79,13 +79,29 @@ for y in range(N):
         tE21[x+y*N,x+y*(N+1)]=1
         tE21[x+y*N,x+y*(N+1)+1]=-1
 
-plt.figure(num=1)
-plt.spy(tE21)
-plt.savefig('spy.png')
-plt.clf()
 #  Insert the normal boundary conditions and split of the vector u_norm
+indices = []
+indices.append([i*(N+1) for i in range(N)])
+indices.append([(i+1)*(N+1)-1 for i in range(N)])
+indices.append([N*(N+1)+i for i in range(N)])
+indices.append([2*N*(N+1)-(i+1) for i in range(N)])
+indices = np.sort(np.array(indices).flatten())
+complement = np.array([i for i in range(2*N*(N+1)) if not i in indices])
 
+tE21_norm = sparse.csc_matrix(tE21.toarray()[:,indices])
+tE21 = sparse.csc_matrix(tE21.toarray()[:,complement])
 
+u_norm = np.zeros(tE21_norm.shape[1])
+for i in range(N):
+    u_norm[i*2] = U_wall_left
+    u_norm[i*2-1] = U_wall_right
+    u_norm[2*N+i] = V_wall_bot
+    u_norm[3*N+i] = V_wall_top
+
+print(tE21_norm.shape)
+print(u_norm.shape)
+u_norm = tE21_norm * u_norm
+print(u_norm.shape)
 # Set up the outer-oriented incidence matrix tE10
 
 
